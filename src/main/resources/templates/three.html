@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="utf-8" />
+	<title>Spring Boot + JPA + Datatables</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	<link rel="stylesheet" href="https://cdn.datatables.net/1.10.12/css/jquery.dataTables.min.css">
+	<script src="https://cdn.datatables.net/1.10.12/js/jquery.dataTables.min.js"></script>
+	<link type=text/css href="https://gyrocode.github.io/jquery-datatables-checkboxes/1.2.11/css/dataTables.checkboxes.css" rel="stylesheet" >
+	<script type=text/javascript src=https://gyrocode.github.io/jquery-datatables-checkboxes/1.2.11/js/dataTables.checkboxes.min.js></script>
+	<script type="text/javascript">
+	$(document).ready(function() {
+		var queryString = window.location.search;
+		var urlParams = new URLSearchParams(queryString);
+		var vId = urlParams.get('vendorId');
+		var oTable = $('#createVLTable').DataTable({
+			"sAjaxSource": "/battery",
+			"sAjaxDataProp": "",
+			"order": [[ 0, "asc" ]],
+			"aoColumns": [
+			      { "mData": "batteryId"},
+		          { "mData": "manufacturer" },
+				  { "mData": "make" },
+				  { "mData": "model" },
+				  { "mData": "capacity" },
+				  { "mData": "range_in_km" },
+				  { "mData": "range_in_mi"},
+		          { "mData": "wh_per_km" },
+				  { "mData": "wh_per_mi" },
+				  { "mData": "energycost_per_km" },
+				  { "mData": "energycost_per_mi" },
+				  { "mData": "charge_times" },
+				  { "mData": null, 
+			    	"mRender": function (data, type, row, meta) {
+			    		var theResponse = null;
+			    		$.ajax({
+			             	url:"/battery/"+row['batteryId']+"/checkBatteryInVL?vendorId="+vId,
+
+			                 type: 'GET',
+
+			                 data:  null,             
+
+			                 dataType: "json", 
+			                 
+			                 async: false,
+
+			                 success : function(result) {
+			                     if(result.status=="Absent"){
+			                    	 theResponse='<button id="addBtn" class="btn btn-primary btn-flat add" name="addBtn" type="button">Add</button>';
+			                     }else if(result.status=="Present"){
+			                    	 theResponse='<button id="deleteBtn" class="btn btn-danger btn-flat delete" name="deleteBtn" type="button" >Delete</button>';
+			                     }
+			                     console.log(result);
+			                   },
+			                   error : function(e) {
+			                 	 alert("Not found!!!"); 
+			                     console.log("ERROR: ", e);
+			                   }
+			             });
+			    		
+			    	 	return theResponse;
+			    	  }
+				  }
+			]
+	 });
+		
+		
+		$('#createVLTable').on("click", ".add", function () {
+			var data = oTable.row($(this).closest("tr")).data();
+			var row= oTable.row($(this).closest("tr")).index();
+			var col= 12;
+			var response = '<button id="deleteBtn" class="btn btn-danger btn-flat delete" name="deleteBtn" type="button" >Delete</button>';
+			var batteryId= data[Object.keys(data)[0]];
+			 $.ajax({
+	            	url:"/battery/"+batteryId+"/addBattery?vendorId="+vId,
+
+	                type: 'POST',
+
+	                data:  null,             
+
+	                dataType: "json",          
+
+	                contentType: 'application/json',
+
+	                mimeType: 'application/json',
+
+	                success : function(result) {
+	                    if(result.status == "Done"){
+	                    	
+	                    	oTable.cell(parseInt(row) , parseInt(col) ).data(response).draw(false);
+	                    }
+	                    console.log(result);
+	                  },
+	                  error : function(e) {
+	                	alert("Error occured");
+	                    console.log("ERROR: ", e);
+	                  }
+	            });
+		});
+		
+		$('#createVLTable').on("click", ".delete", function () {
+			var data = oTable.row($(this).closest("tr")).data();
+			var row= oTable.row($(this).closest("tr")).index();
+			var col= 12;
+			var response = '<button id="addBtn" class="btn btn-primary btn-flat add" name="addBtn" type="button">Add</button>';
+			/* alert("current row value is "+rowNum+" and column value is "+colNum); */
+			
+			var batteryId= data[Object.keys(data)[0]];
+			 $.ajax({
+	            	url:"/battery/"+batteryId+"/removeBattery?vendorId="+vId,
+
+	                type: 'DELETE',
+
+	                data:  null,             
+
+	                dataType: "json",          
+
+	                contentType: 'application/json',
+
+	                mimeType: 'application/json',
+
+	                success : function(result) {
+	                    if(result.status == "Done"){
+	                    	oTable.cell(parseInt(row) , parseInt(col) ).data(response).draw(false);
+	                    }
+	                    console.log(result);
+	                  },
+	                  error : function(e) {
+	                	alert("Error occured");  
+	                    console.log("ERROR: ", e);
+	                  }
+	            });
+		});
+		
+	});
+	
+	 function ModifiedVL()
+	  {
+		 	var queryString = window.location.search;
+
+			var urlParams = new URLSearchParams(queryString);
+
+			var vendorId = urlParams.get('vendorId');
+			
+			url= '/two.html?vendorId='+ encodeURIComponent(vendorId);
+		 
+			document.location.href = url;
+	 }
+	
+    </script>
+</head>
+
+<body>
+	<h1>Edit Vendor List</h1>
+	<br>
+		<div id='alrt' style="fontWeight = 'bold'"></div>
+		<table id="createVLTable" class="display" cellspacing="0" width="100%">
+	      
+	       <!-- Header Table -->
+	       <thead>
+	            <tr>
+	                <th>BatteryId</th>
+					<th>Manufacturer</th>
+	                <th>Make</th>
+	                <th>Model</th>
+	                <th>Battery Capacity</th>
+	                <th>Range in KM</th>
+	                <th>Range in Miles</th>
+					<th>Watt Hours/KM</th>
+	                <th>Watt Hours/Miles</th>
+	                <th>Energy Cost/KM</th>
+	                <th>Energy Cost/Miles</th>
+	                <th>Charging times</th>
+	                <th>Action</th>
+	            </tr>
+	        </thead>
+	        <!-- Footer Table -->
+	        <tfoot>
+	            <tr>
+	                <th>BatteryId</th>
+					<th>Manufacturer</th>
+	                <th>Make</th>
+	                <th>Model</th>
+	                <th>Battery Capacity</th>
+	                <th>Range in KM</th>
+	                <th>Range in Miles</th>
+					<th>Watt Hours/KM</th>
+	                <th>Watt Hours/Miles</th>
+	                <th>Energy Cost/KM</th>
+	                <th>Energy Cost/Miles</th>
+	                <th>Charging times</th>
+	                <th>Action</th>
+	            </tr>
+	        </tfoot>
+	    </table>
+        <br>
+
+        <center><input type="button" onClick="ModifiedVL()" value="View Vendor List"/></center>
+</body>
+</html>
